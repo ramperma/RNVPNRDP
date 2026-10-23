@@ -1,0 +1,9 @@
+<Project>
+  <!-- La ruta del recurso compartido contiene «:» y MSBuild la interpreta mal
+       si obj/ y bin/ se generan junto al proyecto. -->
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>/tmp/wgrdp-linux/obj/</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath>/tmp/wgrdp-linux/obj/</MSBuildProjectExtensionsPath>
+    <BaseOutputPath>/tmp/wgrdp-linux/bin/</BaseOutputPath>
+  </PropertyGroup>
+</Project>

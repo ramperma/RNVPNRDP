@@ -1,0 +1,122 @@
+<Window x:Class="WgRdp.Setup.FirstRunWizard"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Configuración inicial — WG-RDP"
+        Width="680" Height="680"
+        MinWidth="560" MinHeight="520"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResizeWithGrip"
+        Background="{StaticResource BgApp}">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" Background="{StaticResource BgPanel}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="22,16">
+      <StackPanel>
+        <TextBlock x:Name="StepTitle" FontSize="18" FontWeight="SemiBold"/>
+        <TextBlock x:Name="StepIndicator" Foreground="{StaticResource TextMuted}" Margin="0,4,0,0" Text="Paso 1 de 3"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Paso 1: WireGuard -->
+    <StackPanel x:Name="Step1Panel" Grid.Row="1" Margin="22,18">
+      <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextMuted}" Margin="0,0,0,14"
+                 Text="Se instalará el cliente oficial de WireGuard si no está en este equipo. Puede pedir permiso de administrador."/>
+      <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource Line}" BorderThickness="1"
+              CornerRadius="6" Padding="16">
+        <StackPanel>
+          <TextBlock x:Name="WgStatusText" FontWeight="SemiBold" Text="Comprobando…"/>
+          <Button x:Name="InstallWgButton" Content="Descargar e instalar WireGuard"
+                  Click="OnInstallWireGuard" HorizontalAlignment="Left" Margin="0,12,0,0"
+                  Style="{StaticResource PrimaryButton}"
+                  IsEnabled="False"/>
+          <ProgressBar x:Name="DownloadProgress" Margin="0,14,0,0" Visibility="Collapsed"/>
+          <TextBlock x:Name="DownloadText" Margin="0,8,0,0" Foreground="{StaticResource TextMuted}" Text=""/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+
+    <!-- Paso 2: configuración del túnel -->
+    <StackPanel x:Name="Step2Panel" Grid.Row="1" Margin="22,18" Visibility="Collapsed">
+      <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextMuted}" Margin="0,0,0,14"
+                 Text="Elija el archivo .conf del túnel o péguelo. Se guarda en ProgramData de este equipo."/>
+      <Grid Margin="0,0,0,10">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBox x:Name="ConfPathBox" Grid.Column="0" IsReadOnly="True"/>
+        <Button Grid.Column="1" Content="Examinar…" Click="OnBrowseConf" Margin="8,0,0,0"/>
+      </Grid>
+      <TextBlock Text="O pegue la configuración" Style="{StaticResource FieldLabel}"/>
+      <TextBox x:Name="ConfPasteBox" AcceptsReturn="True" TextWrapping="NoWrap"
+               Height="220" FontFamily="Cascadia Mono, Consolas"
+               VerticalContentAlignment="Top"
+               VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+    </StackPanel>
+
+    <!-- Paso 3: datos del usuario RDP -->
+    <ScrollViewer x:Name="Step3Panel" Grid.Row="1" Margin="22,18" Visibility="Collapsed"
+                  VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="16"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0">
+          <TextBlock Text="Servidor RDP" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+          <TextBox x:Name="RdpHostBox"/>
+          <TextBlock Text="Puerto" Style="{StaticResource FieldLabel}"/>
+          <TextBox x:Name="RdpPortBox" Text="3389"/>
+          <TextBlock Text="Usuario" Style="{StaticResource FieldLabel}"/>
+          <TextBox x:Name="UserBox"/>
+          <TextBlock Text="Dominio" Style="{StaticResource FieldLabel}"/>
+          <TextBox x:Name="DomainBox"/>
+        </StackPanel>
+        <StackPanel Grid.Column="2">
+          <TextBlock Text="Contraseña" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+          <PasswordBox x:Name="PasswordBox"/>
+          <TextBlock Text="Nombre del túnel" Style="{StaticResource FieldLabel}"/>
+          <TextBox x:Name="TunnelNameBox" Text="wg-rdp"/>
+          <TextBlock Text="IP VPN del servidor" Style="{StaticResource FieldLabel}"/>
+          <TextBox x:Name="ServerVpnIpBox"/>
+        </StackPanel>
+      </Grid>
+
+      <TextBlock Text="Recursos locales" Style="{StaticResource SectionTitle}" Margin="0,18,0,8"/>
+      <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource Line}"
+              BorderThickness="1" CornerRadius="6" Padding="12,10">
+        <StackPanel>
+          <TextBlock Text="Usar en la sesión remota"
+                     Foreground="{StaticResource TextMuted}" FontSize="11" Margin="0,0,0,4"
+                     TextWrapping="Wrap"/>
+          <CheckBox x:Name="RedirectPrintersCheck" Content="Impresoras locales"
+                    IsChecked="True" Margin="0,6,0,0"/>
+          <CheckBox x:Name="RedirectDrivesCheck" Content="Discos locales"
+                    IsChecked="True" Margin="0,8,0,0"/>
+          <CheckBox x:Name="RedirectClipboardCheck" Content="Portapapeles local"
+                    IsChecked="True" Margin="0,8,0,0"/>
+        </StackPanel>
+      </Border>
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="2" Background="{StaticResource BgPanel}" BorderBrush="{StaticResource Line}"
+            BorderThickness="0,1,0,0" Padding="22,14">
+      <DockPanel>
+        <Button x:Name="BackButton" Content="Atrás" Click="OnBack" IsEnabled="False"/>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button x:Name="NextButton" Content="Siguiente" Click="OnNext"
+                  Style="{StaticResource PrimaryButton}"/>
+          <Button x:Name="FinishButton" Content="Finalizar" Click="OnFinish"
+                  Style="{StaticResource PrimaryButton}" Visibility="Collapsed"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+  </Grid>
+</Window>

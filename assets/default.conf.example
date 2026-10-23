@@ -1,0 +1,16 @@
+# Ejemplo de configuración de cliente WireGuard.
+# Copie este archivo como Setup/wireguard/default.conf junto al exe (o genere el suyo
+# con la herramienta wg genkey / su gestor de túneles) y rellene las claves.
+#
+# IMPORTANTE: las claves privadas son secretos. No suba el .conf real al repositorio.
+
+[Interface]
+PrivateKey = <CLAVE_PRIVADA_DEL_CLIENTE>
+Address = 10.8.0.2/32
+DNS = 10.8.0.1
+
+[Peer]
+PublicKey = <CLAVE_PUBLICA_DEL_SERVIDOR>
+AllowedIPs = 10.8.0.0/24
+Endpoint = vpn.midominio.com:51820
+PersistentKeepalive = 25

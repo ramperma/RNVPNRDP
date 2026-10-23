@@ -1,0 +1,133 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:WgRdp.Views"
+        x:Class="WgRdp.MainWindow"
+        Title="WG-RDP"
+        Width="1180" Height="760"
+        MinWidth="960" MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        Background="#10151C">
+  <Window.Resources>
+    <views:LevelBrushConverter x:Key="LevelBrush"/>
+  </Window.Resources>
+
+  <Grid RowDefinitions="56,*">
+    <Border Grid.Row="0" Background="#161D27" BorderBrush="#2A3544" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto" Margin="18,0">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+          <Border Width="10" Height="10" CornerRadius="5" Background="#1F8A70"/>
+          <TextBlock Text="WG-RDP" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          <TextBlock Text="Acceso remoto por WireGuard" Foreground="#8B9BB0" VerticalAlignment="Center" FontSize="12"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+          <Border x:Name="StatusBadge" CornerRadius="12" Padding="10,5" Background="#222C38">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Border x:Name="StatusDot" Width="8" Height="8" CornerRadius="4" Background="#8B9BB0" VerticalAlignment="Center"/>
+              <TextBlock x:Name="StatusText" Text="Listo" FontSize="12" MaxWidth="420" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+          </Border>
+          <Button x:Name="SaveButton" Content="Guardar perfil" Click="OnSaveProfile"/>
+          <Button x:Name="CancelButton" Content="Cancelar" Click="OnCancel" Classes="danger" IsEnabled="False"/>
+          <Button x:Name="ConnectButton" Content="Conectar y abrir RDP" Click="OnConnect" Classes="primary"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="340,*">
+      <Border Grid.Column="0" Background="#161D27" BorderBrush="#2A3544" BorderThickness="0,0,1,0">
+        <ScrollViewer>
+          <StackPanel Margin="18,14">
+            <TextBlock Text="Conexión" Classes="section" Margin="0,0,0,8"/>
+
+            <TextBlock Text="Perfil" Classes="field" Margin="0,0,0,4"/>
+            <ComboBox x:Name="ProfilePicker" SelectionChanged="OnProfileSelected"/>
+
+            <TextBlock Text="Nombre" Classes="field"/>
+            <TextBox x:Name="ProfileNameBox"/>
+
+            <TextBlock Text="Servidor RDP" Classes="field"/>
+            <TextBox x:Name="RdpHostBox"/>
+
+            <Grid ColumnDefinitions="*,12,90">
+              <StackPanel Grid.Column="0">
+                <TextBlock Text="Usuario" Classes="field"/>
+                <TextBox x:Name="UserBox"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Text="Puerto" Classes="field"/>
+                <TextBox x:Name="RdpPortBox" Text="3389"/>
+              </StackPanel>
+            </Grid>
+
+            <TextBlock Text="Dominio" Classes="field"/>
+            <TextBox x:Name="DomainBox"/>
+
+            <TextBlock Text="Contraseña" Classes="field"/>
+            <TextBox x:Name="PasswordBox" PasswordChar="●"/>
+            <TextBlock Text="Se guarda en el anillo de claves (secret-tool) o, si no hay servicio, en un archivo privado de su usuario."
+                       Foreground="#8B9BB0" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
+
+            <TextBlock Text="Túnel WireGuard" Classes="section" Margin="0,22,0,4"/>
+            <TextBlock Text="Nombre del túnel" Classes="field"/>
+            <TextBox x:Name="TunnelNameBox"/>
+            <TextBlock Text="IP VPN del servidor (opcional)" Classes="field"/>
+            <TextBox x:Name="ServerVpnIpBox"/>
+            <CheckBox x:Name="RemoveTunnelCheck" Content="Eliminar el túnel al cerrar la sesión"/>
+
+            <TextBlock Text="Recursos locales" Classes="section" Margin="0,22,0,8"/>
+            <Border Background="#1C2530" BorderBrush="#2A3544" BorderThickness="1" CornerRadius="6" Padding="12,10">
+              <StackPanel>
+                <TextBlock Text="Usar en la sesión remota" Foreground="#8B9BB0" FontSize="11" TextWrapping="Wrap"/>
+                <CheckBox x:Name="RedirectPrintersCheck" Content="Impresoras locales" IsChecked="True"/>
+                <CheckBox x:Name="RedirectDrivesCheck" Content="Discos locales" IsChecked="True"/>
+                <CheckBox x:Name="RedirectClipboardCheck" Content="Portapapeles local" IsChecked="True"/>
+              </StackPanel>
+            </Border>
+
+            <Button Content="Asistente de configuración" Click="OnWizard" Margin="0,16,0,8" HorizontalAlignment="Stretch"/>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <Grid Grid.Column="1" RowDefinitions="*,6,220">
+        <Border Grid.Row="0" Background="#0B1016" Margin="12,12,12,0" CornerRadius="6"
+                BorderBrush="#2A3544" BorderThickness="1">
+          <StackPanel x:Name="PlaceholderPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+            <TextBlock Text="Escritorio remoto" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+            <TextBlock x:Name="PlaceholderText" Foreground="#8B9BB0" HorizontalAlignment="Center" TextWrapping="Wrap"
+                       MaxWidth="460" TextAlignment="Center"
+                       Text="Pulse Conectar para iniciar la sesión. El escritorio se abre en una ventana de Remmina."/>
+          </StackPanel>
+        </Border>
+
+        <GridSplitter Grid.Row="1" Height="6" ResizeDirection="Rows" Background="#10151C"/>
+
+        <Border Grid.Row="2" Margin="12,0,12,12" Background="#0B1016" CornerRadius="6"
+                BorderBrush="#2A3544" BorderThickness="1">
+          <Grid RowDefinitions="36,*">
+            <Grid ColumnDefinitions="*,Auto" Margin="12,0">
+              <TextBlock Text="Registro de conexión" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
+              <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Content="Copiar" Click="OnCopyLog" Classes="ghost"/>
+                <Button Content="Limpiar" Click="OnClearLog" Classes="ghost"/>
+              </StackPanel>
+            </Grid>
+            <ListBox x:Name="LogList" Grid.Row="1" Background="Transparent" BorderThickness="0"
+                     FontFamily="monospace" FontSize="12" Margin="8,0,8,8">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="64,52,*">
+                    <TextBlock Text="{Binding TimeText}" Foreground="#6D7D90"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Level}" FontWeight="SemiBold"
+                               Foreground="{Binding Level, Converter={StaticResource LevelBrush}}"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Message}" Foreground="#C9D4E0" TextWrapping="Wrap"/>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>

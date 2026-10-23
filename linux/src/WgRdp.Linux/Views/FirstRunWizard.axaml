@@ -1,0 +1,86 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="WgRdp.Views.FirstRunWizard"
+        Title="Configuración inicial — WG-RDP"
+        Width="680" Height="680"
+        MinWidth="560" MinHeight="520"
+        WindowStartupLocation="CenterOwner"
+        Background="#10151C">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Grid.Row="0" Background="#161D27" BorderBrush="#2A3544" BorderThickness="0,0,0,1" Padding="22,16">
+      <StackPanel Spacing="4">
+        <TextBlock x:Name="StepTitle" FontSize="18" FontWeight="SemiBold" Text="Paso 1 — Instalar componentes"/>
+        <TextBlock x:Name="StepIndicator" Foreground="#8B9BB0" Text="Paso 1 de 3"/>
+      </StackPanel>
+    </Border>
+
+    <StackPanel x:Name="Step1Panel" Grid.Row="1" Margin="22,18" Spacing="14">
+      <TextBlock TextWrapping="Wrap" Foreground="#8B9BB0"
+                 Text="Hacen falta WireGuard y un cliente de escritorio remoto. Remmina, si tiene el complemento RDP, ya incluye FreeRDP. Si falta algo, se instala con el gestor de paquetes y se pide autorización de administrador."/>
+      <Border Background="#1C2530" BorderBrush="#2A3544" BorderThickness="1" CornerRadius="6" Padding="16">
+        <StackPanel Spacing="12">
+          <TextBlock x:Name="WgStatusText" FontWeight="SemiBold" Text="Comprobando…" TextWrapping="Wrap"/>
+          <Button x:Name="InstallButton" Content="Instalar lo que falte" Click="OnInstall" Classes="primary"
+                  HorizontalAlignment="Left" IsEnabled="False"/>
+          <TextBlock x:Name="InstallText" Foreground="#8B9BB0" Text="" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+
+    <StackPanel x:Name="Step2Panel" Grid.Row="1" Margin="22,18" Spacing="10" IsVisible="False">
+      <TextBlock TextWrapping="Wrap" Foreground="#8B9BB0"
+                 Text="Elija el archivo .conf del túnel o péguelo. Se guarda en la configuración de su usuario."/>
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBox x:Name="ConfPathBox" IsReadOnly="True"/>
+        <Button Grid.Column="1" Content="Examinar…" Click="OnBrowseConf" Margin="8,0,0,0"/>
+      </Grid>
+      <TextBlock Text="O pegue la configuración" Classes="field"/>
+      <TextBox x:Name="ConfPasteBox" AcceptsReturn="True" TextWrapping="NoWrap" Height="220"
+               FontFamily="monospace" VerticalContentAlignment="Top"/>
+    </StackPanel>
+
+    <ScrollViewer x:Name="Step3Panel" Grid.Row="1" Margin="22,18" IsVisible="False">
+      <StackPanel>
+        <Grid ColumnDefinitions="*,16,*">
+          <StackPanel Grid.Column="0">
+            <TextBlock Text="Servidor RDP" Classes="field" Margin="0,0,0,4"/>
+            <TextBox x:Name="RdpHostBox"/>
+            <TextBlock Text="Puerto" Classes="field"/>
+            <TextBox x:Name="RdpPortBox" Text="3389"/>
+            <TextBlock Text="Usuario" Classes="field"/>
+            <TextBox x:Name="UserBox"/>
+            <TextBlock Text="Dominio" Classes="field"/>
+            <TextBox x:Name="DomainBox"/>
+          </StackPanel>
+          <StackPanel Grid.Column="2">
+            <TextBlock Text="Contraseña" Classes="field" Margin="0,0,0,4"/>
+            <TextBox x:Name="PasswordBox" PasswordChar="●"/>
+            <TextBlock Text="Nombre del túnel" Classes="field"/>
+            <TextBox x:Name="TunnelNameBox" Text="wg-rdp"/>
+            <TextBlock Text="IP VPN del servidor" Classes="field"/>
+            <TextBox x:Name="ServerVpnIpBox"/>
+          </StackPanel>
+        </Grid>
+        <TextBlock Text="Recursos locales" Classes="section" Margin="0,18,0,8"/>
+        <Border Background="#1C2530" BorderBrush="#2A3544" BorderThickness="1" CornerRadius="6" Padding="12,10">
+          <StackPanel>
+            <TextBlock Text="Usar en la sesión remota" Foreground="#8B9BB0" FontSize="11" TextWrapping="Wrap"/>
+            <CheckBox x:Name="RedirectPrintersCheck" Content="Impresoras locales" IsChecked="True"/>
+            <CheckBox x:Name="RedirectDrivesCheck" Content="Discos locales" IsChecked="True"/>
+            <CheckBox x:Name="RedirectClipboardCheck" Content="Portapapeles local" IsChecked="True"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="2" Background="#161D27" BorderBrush="#2A3544" BorderThickness="0,1,0,0" Padding="22,14">
+      <Grid ColumnDefinitions="Auto,*">
+        <Button x:Name="BackButton" Content="Atrás" Click="OnBack" IsEnabled="False"/>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+          <Button x:Name="NextButton" Content="Siguiente" Click="OnNext" Classes="primary"/>
+          <Button x:Name="FinishButton" Content="Finalizar" Click="OnFinish" Classes="primary" IsVisible="False"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

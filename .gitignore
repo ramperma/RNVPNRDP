@@ -1,0 +1,9 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+*.log
+*.msi
+dist/
+.tools/
