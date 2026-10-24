@@ -12,7 +12,6 @@
     <Product>WG-RDP</Product>
     <AssemblyTitle>WG-RDP</AssemblyTitle>
     <Description>Acceso remoto por WireGuard y Escritorio remoto (Linux)</Description>
-    <ApplicationIcon />
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>

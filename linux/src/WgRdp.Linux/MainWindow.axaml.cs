@@ -53,7 +53,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            using var raw = AssetLoader.Open(new Uri("avares://wgrdp/Assets/tray.png"));
+            using var raw = AssetLoader.Open(new Uri("avares://wgrdp/Assets/app-icon.png"));
             var copy = new MemoryStream();
             raw.CopyTo(copy);
             copy.Position = 0;

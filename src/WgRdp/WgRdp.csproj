@@ -19,6 +19,7 @@
     <Description>Acceso remoto por WireGuard y Escritorio remoto</Description>
     <Company>WG-RDP</Company>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationIcon>..\..\assets\icons\app.ico</ApplicationIcon>
     <!-- Permite compilar en Linux/macOS; el binario solo funciona en Windows -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <!-- El MSI de WireGuard y el .conf por defecto se copian junto al exe -->
@@ -37,6 +38,10 @@
           Link="Setup\wireguard\%(RecursiveDir)%(Filename)%(Extension)" Pack="false" />
     <None Include="$(SetupAssetsDir)default.conf.example" CopyToOutputDirectory="PreserveNewest"
           Link="Setup\default.conf.example" Pack="false" />
+    <Resource Include="$(SetupAssetsDir)icons\app.ico" Link="Assets\app.ico" />
+    <Resource Include="$(SetupAssetsDir)icons\app-icon-96.png" Link="Assets\app-icon-96.png" />
+    <Content Include="$(SetupAssetsDir)icons\rn-vpn-rdp-icon-48.png" CopyToOutputDirectory="PreserveNewest"
+             Link="Assets\app-icon-48.png" />
   </ItemGroup>
 
 </Project>

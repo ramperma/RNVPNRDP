@@ -6,6 +6,7 @@
         Width="1180" Height="760"
         MinWidth="960" MinHeight="620"
         WindowStartupLocation="CenterScreen"
+        Icon="/Assets/app-icon.png"
         Background="#10151C">
   <Window.Resources>
     <views:LevelBrushConverter x:Key="LevelBrush"/>
@@ -15,7 +16,7 @@
     <Border Grid.Row="0" Background="#161D27" BorderBrush="#2A3544" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="*,Auto" Margin="18,0">
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
-          <Border Width="10" Height="10" CornerRadius="5" Background="#1F8A70"/>
+          <Image Source="/Assets/app-icon.png" Width="24" Height="24"/>
           <TextBlock Text="WG-RDP" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
           <TextBlock Text="Acceso remoto por WireGuard" Foreground="#8B9BB0" VerticalAlignment="Center" FontSize="12"/>
         </StackPanel>

@@ -28,7 +28,7 @@ CloseApplications=yes
 RestartApplications=no
 DisableDirPage=no
 LicenseFile=
-SetupIconFile=
+SetupIconFile=..\assets\icons\app.ico
 ; El runtime de .NET va dentro de la carpeta publicada (autocontenido).
 ; WireGuard se instala después, con el MSI oficial.
 

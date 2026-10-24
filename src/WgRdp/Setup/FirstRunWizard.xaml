@@ -6,6 +6,7 @@
         MinWidth="560" MinHeight="520"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResizeWithGrip"
+        Icon="/Assets/app.ico"
         Background="{StaticResource BgApp}">
   <Grid>
     <Grid.RowDefinitions>
