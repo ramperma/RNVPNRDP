@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using WgRdp.Logging;
 using WgRdp.Paths;
+using WgRdp.Util;
 
 namespace WgRdp.Linux;
 
@@ -47,6 +48,15 @@ public static partial class TunnelManager
         if (!result.Success)
             throw new InvalidOperationException("No se pudo levantar el túnel: " + LastLines(result.Output));
         Log.Info($"Túnel '{tunnelName}' activo.");
+    }
+
+    public static async Task<bool> IsUpAsync(string tunnelName, CancellationToken ct = default)
+    {
+        ValidateName(tunnelName);
+        var ip = LinuxTools.Which("ip") ?? "ip";
+        var result = await ProcessRunner.RunAsync(ip, ["link", "show", tunnelName], TimeSpan.FromSeconds(5), ct)
+            .ConfigureAwait(false);
+        return result.Success;
     }
 
     public static async Task DownAsync(string tunnelName, bool removeConfig, CancellationToken ct)

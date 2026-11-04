@@ -25,7 +25,10 @@ public sealed class Pipeline
 {
     private readonly Profile _profile;
     private readonly CancellationTokenSource _cts = new();
-    private int _teardownOnce;
+    private readonly object _lifeGate = new();
+    private readonly object _teardownGate = new();
+    private Task _run = Task.CompletedTask;
+    private Task? _teardownTask;
 
     public PipelineState State { get; private set; } = PipelineState.Idle;
     public string? LastError { get; private set; }
@@ -41,7 +44,38 @@ public sealed class Pipeline
 
     public void Cancel() => _cts.Cancel();
 
-    public async Task RunAsync()
+    /// <summary>
+    /// Cancela la conexión en curso, espera a que termine y baja el túnel.
+    /// </summary>
+    public async Task ShutdownAsync()
+    {
+        lock (_lifeGate)
+            _cts.Cancel();
+
+        try
+        {
+            await _run.ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("La conexión terminó al salir: " + ex.Message);
+        }
+
+        await TeardownAsync().ConfigureAwait(false);
+    }
+
+    public Task RunAsync()
+    {
+        lock (_lifeGate)
+        {
+            if (_cts.IsCancellationRequested)
+                return _run;
+            _run = RunCoreAsync();
+            return _run;
+        }
+    }
+
+    private async Task RunCoreAsync()
     {
         try
         {
@@ -127,11 +161,14 @@ public sealed class Pipeline
             throw new InvalidOperationException("Tras la instalación sigue faltando algún componente. " + after.Describe());
     }
 
-    private async Task TeardownAsync()
+    private Task TeardownAsync()
     {
-        if (Interlocked.Exchange(ref _teardownOnce, 1) == 1)
-            return;
+        lock (_teardownGate)
+            return _teardownTask ??= TeardownCoreAsync();
+    }
 
+    private async Task TeardownCoreAsync()
+    {
         try
         {
             await TunnelManager.DownAsync(_profile.TunnelName, _profile.RemoveTunnelOnClose, CancellationToken.None)

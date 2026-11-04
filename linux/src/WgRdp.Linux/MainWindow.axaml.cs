@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using WgRdp.Linux;
 using WgRdp.Logging;
 using WgRdp.Orchestration;
 using WgRdp.Profiles;
@@ -27,6 +28,7 @@ public partial class MainWindow : Window
     private NativeMenuItem? _disconnectItem;
     private bool _suppressProfileEvents;
     private bool _exitRequested;
+    private bool _exiting;
     private bool _trayAvailable;
     private bool _opened;
 
@@ -47,6 +49,7 @@ public partial class MainWindow : Window
         LoadProfileIntoUi(_store.Profiles[0]);
         Log.Info("Aplicación iniciada (Linux).");
         Opened += OnMainWindowOpened;
+        InstanceLock.Listen(() => Dispatcher.UIThread.Post(ShowExistingWindow));
     }
 
     private void TryCreateTray()
@@ -68,7 +71,7 @@ public partial class MainWindow : Window
             show.Click += (_, _) => Dispatcher.UIThread.Post(RestoreFromTray);
             _connectItem.Click += (_, _) => Dispatcher.UIThread.Post(() => OnConnect(this, new RoutedEventArgs()));
             _disconnectItem.Click += (_, _) => Dispatcher.UIThread.Post(() => OnCancel(this, new RoutedEventArgs()));
-            exit.Click += (_, _) => Dispatcher.UIThread.Post(ExitFromTray);
+            exit.Click += (_, _) => Dispatcher.UIThread.Post(() => _ = RequestExitAsync());
 
             var menu = new NativeMenu();
             menu.Items.Add(show);
@@ -323,41 +326,108 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(WindowClosingEventArgs e)
     {
-        if (!_exitRequested && _trayAvailable)
+        if (!_exitRequested)
         {
             e.Cancel = true;
-            Hide();
-            Log.Info("La ventana sigue en la bandeja. Use Salir para cerrar del todo.");
+            if (_trayAvailable)
+            {
+                Hide();
+                Log.Info("La ventana sigue en la bandeja. Use Salir para cerrar del todo.");
+                return;
+            }
+
+            _ = RequestExitAsync();
             return;
         }
 
         _lifetime.Cancel();
         _pipeline?.Cancel();
         _rdp?.Dispose();
-        if (_tray is not null)
-        {
-            _tray.IsVisible = false;
-            _tray.Dispose();
-            _tray = null;
-        }
+        RemoveTrayIcon();
+        InstanceLock.Release();
         _lifetime.Dispose();
         base.OnClosing(e);
     }
 
     private void RestoreFromTray()
     {
-        Show();
+        if (!IsVisible)
+            Show();
         if (WindowState == WindowState.Minimized)
             WindowState = WindowState.Normal;
         Activate();
     }
 
-    private void ExitFromTray()
+    private void ShowExistingWindow()
     {
-        _exitRequested = true;
-        _pipeline?.Cancel();
+        if (!IsVisible)
+            Show();
+        WindowState = WindowState.Maximized;
+        Activate();
+    }
+
+    private async void OnExit(object? sender, RoutedEventArgs e) => await RequestExitAsync();
+
+    private async Task RequestExitAsync()
+    {
+        if (_exiting || _exitRequested)
+            return;
+
+        if (!IsVisible)
+            Show();
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+        Activate();
+
+        var leave = await Dialogs.ConfirmAsync(this, "Salir de WG-RDP", "¿Quiere salir de la aplicación?");
+        if (!leave)
+            return;
+
+        await ExitCompletelyAsync();
+    }
+
+    private async Task ExitCompletelyAsync()
+    {
+        if (_exiting)
+            return;
+        _exiting = true;
+        ExitButton.IsEnabled = false;
+        SetStatus("Cerrando túnel…", StatusKind.Busy);
+
         _rdp?.Disconnect();
+        var pipeline = _pipeline;
+        try
+        {
+            if (pipeline is not null)
+            {
+                await pipeline.ShutdownAsync();
+            }
+            else
+            {
+                var tunnelName = string.IsNullOrWhiteSpace(TunnelNameBox.Text) ? "wg-rdp" : TunnelNameBox.Text.Trim();
+                if (await TunnelManager.IsUpAsync(tunnelName))
+                    await TunnelManager.DownAsync(tunnelName, RemoveTunnelCheck.IsChecked == true, CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("No se pudo cerrar el túnel al salir", ex);
+        }
+
+        _exitRequested = true;
         Close();
+    }
+
+    private void RemoveTrayIcon()
+    {
+        if (_tray is null)
+            return;
+        _tray.IsVisible = false;
+        if (Application.Current is not null)
+            TrayIcon.SetIcons(Application.Current, new TrayIcons());
+        _tray.Dispose();
+        _tray = null;
+        _trayAvailable = false;
     }
 
     private void OnClearLog(object? sender, RoutedEventArgs e) => _logs.Clear();

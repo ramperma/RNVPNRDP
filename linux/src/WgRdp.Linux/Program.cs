@@ -14,6 +14,9 @@ internal static class Program
             return;
         }
 
+        if (!InstanceLock.TryBecomePrimary())
+            return;
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

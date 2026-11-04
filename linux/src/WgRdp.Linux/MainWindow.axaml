@@ -30,6 +30,7 @@
           <Button x:Name="SaveButton" Content="Guardar perfil" Click="OnSaveProfile"/>
           <Button x:Name="CancelButton" Content="Cancelar" Click="OnCancel" Classes="danger" IsEnabled="False"/>
           <Button x:Name="ConnectButton" Content="Conectar y abrir RDP" Click="OnConnect" Classes="primary"/>
+          <Button x:Name="ExitButton" Content="Salir" Click="OnExit" Classes="danger"/>
         </StackPanel>
       </Grid>
     </Border>
