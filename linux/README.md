@@ -13,6 +13,8 @@ La aplicación de Windows (`src/WgRdp`) no cambia.
 2. Copia el `.conf` a `/etc/wireguard/<túnel>.conf` (modo 0600) y ejecuta `wg-quick up`.
 3. Espera handshake, ping a la IP VPN o que el puerto RDP responda.
 4. Abre el escritorio con Remmina (el FreeRDP que ya usa) o, si existe, con `xfreerdp`.
+   Por defecto la ventana usa el **área útil del escritorio** (como maximizada);
+   si rellena anchura y altura en el perfil, se usa ese tamaño fijo.
    La contraseña no va en la línea de comandos: Remmina la cifra en un perfil temporal
    y `xfreerdp` la lee por la entrada estándar.
 5. Al cerrar esa ventana, ejecuta `wg-quick down`. Si el perfil lo pide, borra el `.conf`.
@@ -37,6 +39,21 @@ Comprobar herramientas sin abrir la ventana:
 ```bash
 bash build.sh run -- --doctor
 ```
+
+## Acceso directo en el menú (Internet / Red)
+
+Para que **WG-RDP** aparezca en el menú de aplicaciones (en muchos escritorios,
+junto a otras entradas de red o «Internet»):
+
+```bash
+cd linux
+chmod +x install-menu-entry.sh
+./install-menu-entry.sh
+```
+
+El script crea `~/.local/share/applications/wgrdp-linux.desktop` con la categoría
+`Network` (RemoteAccess). Si no lo ve de inmediato, cierre sesión o actualice
+las bases de datos de escritorio.
 
 `build.sh` copia el proyecto a un directorio local antes de compilar: la ruta de
 este recurso compartido contiene `:` y ni MSBuild ni el generador de Avalonia

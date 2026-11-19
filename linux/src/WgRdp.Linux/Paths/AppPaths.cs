@@ -33,13 +33,32 @@ public static class AppPaths
     public static string LogDir => Path.Combine(StateDir, "logs");
     public static string SecretsDir => Path.Combine(DataDir, "secrets");
     public static string TunnelStageDir => Path.Combine(ConfigDir, "tunnels");
+    public static string ProfileConfsDir => Path.Combine(ConfigDir, "confs");
     public static string ProfilesPath => Path.Combine(ConfigDir, "profiles.json");
     public static string SetupPath => Path.Combine(ConfigDir, "setup.json");
     public static string DefaultConfPath => Path.Combine(ConfigDir, "default.conf");
 
+    public static string ProfileConfPath(string profileId) => Path.Combine(ProfileConfsDir, profileId + ".conf");
+
+    public static bool IsManagedProfileConfPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+        try
+        {
+            var full = Path.GetFullPath(path);
+            var dir = Path.GetFullPath(ProfileConfsDir) + Path.DirectorySeparatorChar;
+            return full.StartsWith(dir, StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public static void Ensure()
     {
-        foreach (var dir in new[] { ConfigDir, DataDir, StateDir, LogDir, RuntimeDir, SecretsDir, TunnelStageDir })
+        foreach (var dir in new[] { ConfigDir, DataDir, StateDir, LogDir, RuntimeDir, SecretsDir, TunnelStageDir, ProfileConfsDir })
         {
             Directory.CreateDirectory(dir);
             TryPrivate(dir);

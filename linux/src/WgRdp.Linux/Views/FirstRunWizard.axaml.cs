@@ -1,9 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
 using WgRdp.Linux;
 using WgRdp.Logging;
-using WgRdp.Paths;
 using WgRdp.Profiles;
 using WgRdp.Setup;
 
@@ -11,31 +9,64 @@ namespace WgRdp.Views;
 
 public partial class FirstRunWizard : Window
 {
+    private readonly bool _createNew;
+    private readonly string? _targetProfileId;
     private int _step = 1;
     private bool _toolsReady;
-    private bool _confReady;
+    private bool _hasExistingConf;
+    private string? _pendingConfText;
+    private string? _pendingConfLabel;
+
+    public string? SavedProfileId { get; private set; }
 
     public FirstRunWizard()
+        : this(targetProfileId: null, createNew: false)
     {
+    }
+
+    public FirstRunWizard(string? targetProfileId, bool createNew)
+    {
+        _targetProfileId = targetProfileId;
+        _createNew = createNew;
         InitializeComponent();
+        Title = createNew ? "Nuevo perfil — WG-RDP" : "Asistente de configuración — WG-RDP";
         Opened += (_, _) => _ = RefreshToolsAsync();
-        if (File.Exists(AppPaths.DefaultConfPath))
+
+        var store = ProfileStore.Load();
+        if (createNew)
         {
-            ConfPathBox.Text = AppPaths.DefaultConfPath;
-            _confReady = true;
+            ProfileNameBox.Text = store.UniqueName("Nuevo perfil");
+            RdpPortBox.Text = "3389";
+            TunnelNameBox.Text = "wg-rdp";
+            RedirectPrintersCheck.IsChecked = true;
+            RedirectDrivesCheck.IsChecked = true;
+            RedirectClipboardCheck.IsChecked = true;
+        }
+        else
+        {
+            var profile = store.FindById(targetProfileId) ?? store.Profiles[0];
+            _targetProfileId = profile.Id;
+
+            if (profile.HasExplicitOrExistingConf)
+            {
+                _hasExistingConf = true;
+                ConfPathBox.Text = profile.DisplayConfLabel;
+                ConfStatusText.Text = "Configuración actual lista (puede reemplazarla seleccionando otro archivo).";
+            }
+
+            ProfileNameBox.Text = profile.Name;
+            RdpHostBox.Text = profile.RdpHost;
+            RdpPortBox.Text = profile.RdpPort.ToString();
+            UserBox.Text = profile.Username;
+            DomainBox.Text = profile.Domain;
+            TunnelNameBox.Text = string.IsNullOrWhiteSpace(profile.TunnelName) ? "wg-rdp" : profile.TunnelName;
+            ServerVpnIpBox.Text = profile.ServerVpnIp;
+            RedirectPrintersCheck.IsChecked = profile.RedirectPrinters;
+            RedirectDrivesCheck.IsChecked = profile.RedirectDrives;
+            RedirectClipboardCheck.IsChecked = profile.RedirectClipboard;
+            PasswordBox.Text = SecretStore.LoadPassword(profile.Name) ?? "";
         }
 
-        var profile = ProfileStore.Load().Profiles[0];
-        RdpHostBox.Text = profile.RdpHost;
-        RdpPortBox.Text = profile.RdpPort.ToString();
-        UserBox.Text = profile.Username;
-        DomainBox.Text = profile.Domain;
-        TunnelNameBox.Text = string.IsNullOrWhiteSpace(profile.TunnelName) ? "wg-rdp" : profile.TunnelName;
-        ServerVpnIpBox.Text = profile.ServerVpnIp;
-        RedirectPrintersCheck.IsChecked = profile.RedirectPrinters;
-        RedirectDrivesCheck.IsChecked = profile.RedirectDrives;
-        RedirectClipboardCheck.IsChecked = profile.RedirectClipboard;
-        PasswordBox.Text = SecretStore.LoadPassword(profile.Name) ?? "";
         UpdateStepUi();
     }
 
@@ -90,66 +121,33 @@ public partial class FirstRunWizard : Window
 
     private async void OnBrowseConf(object? sender, RoutedEventArgs e)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Seleccione la configuración del túnel WireGuard",
-            AllowMultiple = false,
-            FileTypeFilter =
-            [
-                new FilePickerFileType("Configuración WireGuard") { Patterns = ["*.conf"] },
-                new FilePickerFileType("Todos los archivos") { Patterns = ["*"] },
-            ],
-        });
-        if (files.Count == 0)
+        var picked = await Dialogs.PickWireGuardConfAsync(this);
+        if (picked is null)
             return;
 
-        try
-        {
-            var picked = files[0];
-            AppPaths.Ensure();
-            var local = picked.TryGetLocalPath();
-            if (!string.IsNullOrEmpty(local))
-                File.Copy(local, AppPaths.DefaultConfPath, overwrite: true);
-            else
-            {
-                await using var stream = await picked.OpenReadAsync();
-                await using var dest = File.Create(AppPaths.DefaultConfPath);
-                await stream.CopyToAsync(dest);
-            }
-
-            AppPaths.TryPrivate(AppPaths.DefaultConfPath);
-            if (!LooksLikeWireGuard(File.ReadAllText(AppPaths.DefaultConfPath)))
-            {
-                await Dialogs.ShowMessageAsync(this, "Configuración inválida",
-                    "El archivo no parece una configuración WireGuard (falta [Interface] o [Peer]).");
-                return;
-            }
-
-            ConfPathBox.Text = AppPaths.DefaultConfPath;
-            _confReady = true;
-            Log.Info("Configuración del túnel copiada.");
-        }
-        catch (Exception ex)
-        {
-            Log.Error("No se pudo copiar la configuración", ex);
-            await Dialogs.ShowMessageAsync(this, "Error", ex.Message);
-        }
+        _pendingConfText = picked.Content;
+        _pendingConfLabel = picked.Label;
+        ConfPathBox.Text = string.IsNullOrWhiteSpace(picked.SourcePath)
+            ? picked.Label
+            : $"{picked.Label} ({picked.SourcePath})";
+        ConfStatusText.Text = $"Archivo válido seleccionado: {picked.Label}";
+        ConfPasteBox.Text = "";
+        Log.Info($"Configuración WireGuard seleccionada en el asistente: {picked.Label}");
     }
 
-    private bool AcceptPastedConf()
+    private bool CapturePastedConfIfAny()
     {
         var text = ConfPasteBox.Text?.Trim() ?? "";
         if (text.Length == 0)
-            return _confReady;
-        if (!LooksLikeWireGuard(text))
+            return _pendingConfText is not null || _hasExistingConf;
+
+        if (!ProfileStore.LooksLikeWireGuard(text))
             return false;
 
-        AppPaths.Ensure();
-        File.WriteAllText(AppPaths.DefaultConfPath, text + Environment.NewLine);
-        AppPaths.TryPrivate(AppPaths.DefaultConfPath);
-        ConfPathBox.Text = AppPaths.DefaultConfPath;
-        _confReady = true;
-        Log.Info("Configuración del túnel guardada desde el texto pegado.");
+        _pendingConfText = text;
+        _pendingConfLabel = "Configuración pegada";
+        ConfPathBox.Text = _pendingConfLabel;
+        ConfStatusText.Text = "Configuración pegada válida.";
         return true;
     }
 
@@ -161,7 +159,7 @@ public partial class FirstRunWizard : Window
             return;
         }
 
-        if (_step == 2 && !AcceptPastedConf())
+        if (_step == 2 && !CapturePastedConfIfAny())
         {
             await Dialogs.ShowMessageAsync(this, "Configuración inválida",
                 "Elija un archivo .conf o pegue una configuración con [Interface] y [Peer].");
@@ -185,9 +183,9 @@ public partial class FirstRunWizard : Window
         Step3Panel.IsVisible = _step == 3;
         StepTitle.Text = _step switch
         {
-            1 => "Paso 1 — Instalar componentes",
+            1 => "Paso 1 — Comprobar componentes",
             2 => "Paso 2 — Configuración del túnel",
-            _ => "Paso 3 — Datos del usuario RDP",
+            _ => "Paso 3 — Datos del perfil y usuario RDP",
         };
         StepIndicator.Text = $"Paso {_step} de 3";
         BackButton.IsEnabled = _step > 1;
@@ -197,50 +195,119 @@ public partial class FirstRunWizard : Window
 
     private async void OnFinish(object? sender, RoutedEventArgs e)
     {
+        var profileName = ProfileNameBox.Text?.Trim() ?? "";
         var host = RdpHostBox.Text?.Trim() ?? "";
         var user = UserBox.Text?.Trim() ?? "";
+        var tunnelName = string.IsNullOrWhiteSpace(TunnelNameBox.Text) ? "wg-rdp" : TunnelNameBox.Text.Trim();
+
+        if (profileName.Length == 0)
+        {
+            await Dialogs.ShowMessageAsync(this, "Paso 3", "Indique un nombre para el perfil.");
+            return;
+        }
+
         if (host.Length == 0 || user.Length == 0)
         {
             await Dialogs.ShowMessageAsync(this, "Paso 3", "El servidor RDP y el usuario son obligatorios.");
             return;
         }
 
-        if (!_confReady && !File.Exists(AppPaths.DefaultConfPath) && !AcceptPastedConf())
+        try
         {
-            await Dialogs.ShowMessageAsync(this, "Paso 2", "Falta la configuración del túnel.");
+            TunnelManager.ValidateName(tunnelName);
+        }
+        catch (Exception ex)
+        {
+            await Dialogs.ShowMessageAsync(this, "Nombre de túnel inválido", ex.Message);
+            return;
+        }
+
+        if (!CapturePastedConfIfAny())
+        {
+            await Dialogs.ShowMessageAsync(this, "Paso 2", "Falta la configuración del túnel (.conf).");
             _step = 2;
             UpdateStepUi();
             return;
         }
 
-        var store = ProfileStore.Load();
-        var profile = store.Profiles[0];
-        profile.Name = string.IsNullOrWhiteSpace(profile.Name) ? "Predeterminado" : profile.Name;
-        profile.RdpHost = host;
-        profile.Username = user;
-        profile.Domain = DomainBox.Text?.Trim() ?? "";
-        profile.TunnelName = string.IsNullOrWhiteSpace(TunnelNameBox.Text) ? "wg-rdp" : TunnelNameBox.Text.Trim();
-        profile.ServerVpnIp = ServerVpnIpBox.Text?.Trim() ?? "";
-        profile.TunnelConfPath = AppPaths.DefaultConfPath;
-        if (!int.TryParse(RdpPortBox.Text?.Trim(), out var port) || port is < 1 or > 65535)
-            port = 3389;
-        profile.RdpPort = port;
-        profile.RedirectPrinters = RedirectPrintersCheck.IsChecked == true;
-        profile.RedirectDrives = RedirectDrivesCheck.IsChecked == true;
-        profile.RedirectClipboard = RedirectClipboardCheck.IsChecked == true;
-        store.Save();
+        try
+        {
+            var store = ProfileStore.Load();
+            Profile profile;
+            string? previousName = null;
 
-        if ((PasswordBox.Text?.Length ?? 0) > 0)
-            SecretStore.SavePassword(profile.Name, PasswordBox.Text!);
+            if (_createNew)
+            {
+                if (store.Find(profileName) is not null)
+                {
+                    await Dialogs.ShowMessageAsync(this, "Nombre duplicado",
+                        $"Ya existe un perfil llamado '{profileName}'. Elija otro nombre.");
+                    return;
+                }
 
-        var setup = SetupState.Load();
-        setup.FirstRunCompleted = true;
-        setup.Save();
-        Log.Info("Configuración inicial completada.");
-        Close(true);
+                profile = new Profile
+                {
+                    Id = Guid.NewGuid().ToString("N"),
+                    Name = profileName,
+                };
+                store.Profiles.Add(profile);
+            }
+            else
+            {
+                profile = store.FindById(_targetProfileId) ?? store.Profiles[0];
+                if (store.FindByNameExcluding(profileName, profile.Id) is not null)
+                {
+                    await Dialogs.ShowMessageAsync(this, "Nombre duplicado",
+                        $"Ya existe otro perfil llamado '{profileName}'. Elija otro nombre.");
+                    return;
+                }
+
+                previousName = profile.Name;
+                profile.Name = profileName;
+            }
+
+            if (_pendingConfText is not null)
+                ProfileStore.SaveProfileConf(profile, _pendingConfText, _pendingConfLabel ?? "wireguard.conf");
+
+            profile.RdpHost = host;
+            profile.Username = user;
+            profile.Domain = DomainBox.Text?.Trim() ?? "";
+            profile.TunnelName = tunnelName;
+            profile.ServerVpnIp = ServerVpnIpBox.Text?.Trim() ?? "";
+            if (!int.TryParse(RdpPortBox.Text?.Trim(), out var port) || port is < 1 or > 65535)
+                port = 3389;
+            profile.RdpPort = port;
+            profile.RedirectPrinters = RedirectPrintersCheck.IsChecked == true;
+            profile.RedirectDrives = RedirectDrivesCheck.IsChecked == true;
+            profile.RedirectClipboard = RedirectClipboardCheck.IsChecked == true;
+            store.Save();
+
+            var newPassword = PasswordBox.Text ?? "";
+            if (!string.IsNullOrEmpty(previousName)
+                && !string.Equals(previousName, profile.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                if (newPassword.Length == 0)
+                    newPassword = SecretStore.LoadPassword(previousName) ?? "";
+                SecretStore.DeletePassword(previousName);
+            }
+
+            if (newPassword.Length > 0)
+                SecretStore.SavePassword(profile.Name, newPassword);
+
+            var setup = SetupState.Load();
+            setup.FirstRunCompleted = true;
+            setup.Save();
+
+            SavedProfileId = profile.Id;
+            Log.Info(_createNew
+                ? $"Perfil '{profile.Name}' creado desde el asistente."
+                : $"Perfil '{profile.Name}' actualizado desde el asistente.");
+            Close(true);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Error al guardar el perfil desde el asistente", ex);
+            await Dialogs.ShowMessageAsync(this, "Error al guardar", ex.Message);
+        }
     }
-
-    private static bool LooksLikeWireGuard(string text) =>
-        text.Contains("[Interface]", StringComparison.OrdinalIgnoreCase)
-        && text.Contains("[Peer]", StringComparison.OrdinalIgnoreCase);
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using WgRdp.Logging;
@@ -8,12 +9,6 @@ namespace WgRdp.Linux;
 /// <summary>Comprueba handshake, ping o el puerto RDP antes de abrir FreeRDP.</summary>
 public static partial class TunnelHealthCheck
 {
-    [GeneratedRegex(@"latest handshake:\s*(\d+)\s+second", RegexOptions.IgnoreCase)]
-    private static partial Regex SecondsRegex();
-
-    [GeneratedRegex(@"latest handshake:\s*(\d+)\s+minute", RegexOptions.IgnoreCase)]
-    private static partial Regex MinutesRegex();
-
     public static async Task<bool> WaitForLinkAsync(
         string tunnelName,
         string? serverVpnIp,
@@ -62,14 +57,33 @@ public static partial class TunnelHealthCheck
 
     private static bool HandshakeIsFresh(string show)
     {
-        var seconds = SecondsRegex().Match(show);
-        if (seconds.Success && int.TryParse(seconds.Groups[1].Value, out var secs))
-            return secs < 180;
+        // Salida típica de `wg show` (en inglés): «latest handshake: 45 seconds ago»,
+        // «2 minutes ago» o «1 minute, 23 seconds ago». El código antiguo buscaba «second»
+        // en singular y no coincidía con «seconds».
+        var idx = show.IndexOf("latest handshake:", StringComparison.OrdinalIgnoreCase);
+        if (idx < 0)
+            return false;
 
-        var minutes = MinutesRegex().Match(show);
-        return minutes.Success
-               && int.TryParse(minutes.Groups[1].Value, out var mins)
-               && mins < 3;
+        var line = show[idx..];
+        var nl = line.IndexOf('\n');
+        if (nl > 0)
+            line = line[..nl];
+
+        if (line.Contains("(never)", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var minM = Regex.Match(line, @"(\d+)\s+minutes?", RegexOptions.IgnoreCase);
+        var secM = Regex.Match(line, @"(\d+)\s+seconds?", RegexOptions.IgnoreCase);
+        if (!minM.Success && !secM.Success)
+            return false;
+
+        var total = 0;
+        if (minM.Success)
+            total += int.Parse(minM.Groups[1].Value, CultureInfo.InvariantCulture) * 60;
+        if (secM.Success)
+            total += int.Parse(secM.Groups[1].Value, CultureInfo.InvariantCulture);
+
+        return total is > 0 and < 180;
     }
 
     private static async Task<bool> PingOnceAsync(string host, CancellationToken ct)

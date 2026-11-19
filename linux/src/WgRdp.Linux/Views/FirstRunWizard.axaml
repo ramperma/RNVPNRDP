@@ -30,18 +30,21 @@
 
     <StackPanel x:Name="Step2Panel" Grid.Row="1" Margin="22,18" Spacing="10" IsVisible="False">
       <TextBlock TextWrapping="Wrap" Foreground="#8B9BB0"
-                 Text="Elija el archivo .conf del túnel o péguelo. Se guarda en la configuración de su usuario."/>
+                 Text="Elija el archivo .conf del túnel o péguelo. Cada perfil guarda su propia copia privada."/>
       <Grid ColumnDefinitions="*,Auto">
-        <TextBox x:Name="ConfPathBox" IsReadOnly="True"/>
+        <TextBox x:Name="ConfPathBox" IsReadOnly="True" Watermark="Ningún archivo seleccionado"/>
         <Button Grid.Column="1" Content="Examinar…" Click="OnBrowseConf" Margin="8,0,0,0"/>
       </Grid>
+      <TextBlock x:Name="ConfStatusText" Foreground="#3DDC97" FontSize="12" Text="" TextWrapping="Wrap"/>
       <TextBlock Text="O pegue la configuración" Classes="field"/>
-      <TextBox x:Name="ConfPasteBox" AcceptsReturn="True" TextWrapping="NoWrap" Height="220"
+      <TextBox x:Name="ConfPasteBox" AcceptsReturn="True" TextWrapping="NoWrap" Height="200"
                FontFamily="monospace" VerticalContentAlignment="Top"/>
     </StackPanel>
 
     <ScrollViewer x:Name="Step3Panel" Grid.Row="1" Margin="22,18" IsVisible="False">
       <StackPanel>
+        <TextBlock Text="Nombre del perfil" Classes="field" Margin="0,0,0,4"/>
+        <TextBox x:Name="ProfileNameBox" Margin="0,0,0,10"/>
         <Grid ColumnDefinitions="*,16,*">
           <StackPanel Grid.Column="0">
             <TextBlock Text="Servidor RDP" Classes="field" Margin="0,0,0,4"/>

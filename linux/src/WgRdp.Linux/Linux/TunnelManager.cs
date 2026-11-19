@@ -14,7 +14,11 @@ public static partial class TunnelManager
     [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9_-]{0,14}$")]
     private static partial Regex NameRegex();
 
-    public static async Task UpAsync(string tunnelName, string sourceConfPath, CancellationToken ct)
+    public static async Task UpAsync(
+        string tunnelName,
+        string sourceConfPath,
+        CancellationToken ct,
+        IReadOnlyList<string>? tunnelsToCloseFirst = null)
     {
         ValidateName(tunnelName);
         var staged = StageConf(tunnelName, sourceConfPath);
@@ -22,7 +26,32 @@ public static partial class TunnelManager
             ?? throw new InvalidOperationException("No está wg-quick. Instale wireguard-tools.");
         var ip = LinuxTools.Which("ip") ?? "ip";
 
+        var activeOthers = new List<string>();
+        if (tunnelsToCloseFirst is { Count: > 0 })
+        {
+            foreach (var other in tunnelsToCloseFirst
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Select(n => n.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if (string.Equals(other, tunnelName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (!NameRegex().IsMatch(other))
+                    continue;
+                if (await IsUpAsync(other, ct).ConfigureAwait(false))
+                    activeOthers.Add(other);
+            }
+        }
+
+        var closeOthersScript = string.Join(
+            '\n',
+            activeOthers.Select(other =>
+                $"if {RootRunner.BashQuote(ip)} link show {RootRunner.BashQuote(other)} >/dev/null 2>&1; then\n" +
+                $"  {RootRunner.BashQuote(wgQuick)} down {RootRunner.BashQuote(other)} || true\n" +
+                "fi"));
+
         var script = $$"""
+            {{closeOthersScript}}
             name={{RootRunner.BashQuote(tunnelName)}}
             src={{RootRunner.BashQuote(staged)}}
             dest="/etc/wireguard/${name}.conf"
@@ -40,6 +69,8 @@ public static partial class TunnelManager
             {{RootRunner.BashQuote(wgQuick)}} up "$name"
             """;
 
+        if (activeOthers.Count > 0)
+            Log.Info($"Cerrando túnel(es) previos ({string.Join(", ", activeOthers)}) antes de levantar '{tunnelName}'…");
         Log.Info($"Conectando túnel '{tunnelName}'…");
         var result = await RootRunner.RunBashAsync(script, TimeSpan.FromMinutes(2), ct).ConfigureAwait(false);
         LogSafe(result.Output);

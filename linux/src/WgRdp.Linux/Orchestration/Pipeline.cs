@@ -24,21 +24,24 @@ public enum PipelineState
 public sealed class Pipeline
 {
     private readonly Profile _profile;
+    private readonly IReadOnlyList<string> _otherTunnels;
     private readonly CancellationTokenSource _cts = new();
     private readonly object _lifeGate = new();
     private readonly object _teardownGate = new();
     private Task _run = Task.CompletedTask;
     private Task? _teardownTask;
 
+    public Profile Profile => _profile;
     public PipelineState State { get; private set; } = PipelineState.Idle;
     public string? LastError { get; private set; }
 
     public event Action<PipelineState>? StateChanged;
     public event Action? VpnReady;
 
-    public Pipeline(Profile profile, string? password)
+    public Pipeline(Profile profile, string? password, IReadOnlyList<string>? otherTunnels = null)
     {
-        _profile = profile;
+        _profile = profile.Clone();
+        _otherTunnels = otherTunnels ?? [];
         _ = password;
     }
 
@@ -93,7 +96,11 @@ public sealed class Pipeline
             _cts.Token.ThrowIfCancellationRequested();
 
             SetState(PipelineState.ConnectingVpn);
-            await TunnelManager.UpAsync(_profile.TunnelName, _profile.ResolvedTunnelConfPath, _cts.Token)
+            await TunnelManager.UpAsync(
+                    _profile.TunnelName,
+                    _profile.ResolvedTunnelConfPath,
+                    _cts.Token,
+                    _otherTunnels)
                 .ConfigureAwait(false);
 
             SetState(PipelineState.WaitingHandshake);

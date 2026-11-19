@@ -177,6 +177,7 @@ public sealed class FreeRdpSession : IDisposable
             _ => "nla",
         };
         var depth = profile.ColorDepth is 16 or 32 ? profile.ColorDepth : 32;
+        var customSize = profile.RdpWidth > 0 && profile.RdpHeight > 0;
         var text = new StringBuilder();
         text.AppendLine("[remmina]");
         text.AppendLine("name=WG-RDP");
@@ -193,7 +194,15 @@ public sealed class FreeRdpSession : IDisposable
         text.AppendLine("security=" + security);
         text.AppendLine("shareprinter=" + (profile.RedirectPrinters ? "1" : "0"));
         text.AppendLine("disableclipboard=" + (profile.RedirectClipboard ? "0" : "1"));
-        text.AppendLine("resolution_mode=2");
+        // Remmina: 0 = tamaño fijo, 1 = tamaño del cliente (monitor / «pantalla completa en ventana»).
+        if (customSize)
+        {
+            text.AppendLine("resolution_mode=0");
+            text.AppendLine("resolution_width=" + profile.RdpWidth);
+            text.AppendLine("resolution_height=" + profile.RdpHeight);
+        }
+        else
+            text.AppendLine("resolution_mode=1");
         text.AppendLine("colordepth=" + depth);
         if (profile.RedirectDrives)
         {
@@ -284,12 +293,32 @@ public sealed class FreeRdpSession : IDisposable
 
         var width = profile.RdpWidth > 0 ? profile.RdpWidth : 1280;
         var height = profile.RdpHeight > 0 ? profile.RdpHeight : 800;
-        if (help.Contains("/size:", StringComparison.OrdinalIgnoreCase))
-            args.Add($"/size:{width}x{height}");
+        var customSize = profile.RdpWidth > 0 && profile.RdpHeight > 0;
+
+        if (customSize)
+        {
+            if (help.Contains("/size:", StringComparison.OrdinalIgnoreCase))
+                args.Add($"/size:{width}x{height}");
+            else
+            {
+                args.Add("/w:" + width);
+                args.Add("/h:" + height);
+            }
+        }
+        else if (help.Contains("workarea", StringComparison.OrdinalIgnoreCase))
+        {
+            // «Maximizada» en ventana: FreeRDP documenta /workarea como equivalente práctico.
+            args.Add("/workarea");
+        }
         else
         {
-            args.Add("/w:" + width);
-            args.Add("/h:" + height);
+            if (help.Contains("/size:", StringComparison.OrdinalIgnoreCase))
+                args.Add($"/size:{width}x{height}");
+            else
+            {
+                args.Add("/w:" + width);
+                args.Add("/h:" + height);
+            }
         }
 
         return args;

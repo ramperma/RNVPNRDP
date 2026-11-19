@@ -42,7 +42,11 @@
             <TextBlock Text="Conexión" Classes="section" Margin="0,0,0,8"/>
 
             <TextBlock Text="Perfil" Classes="field" Margin="0,0,0,4"/>
-            <ComboBox x:Name="ProfilePicker" SelectionChanged="OnProfileSelected"/>
+            <ComboBox x:Name="ProfilePicker" HorizontalAlignment="Stretch" SelectionChanged="OnProfileSelected"/>
+            <Grid ColumnDefinitions="*,8,*" Margin="0,8,0,0">
+              <Button x:Name="NewProfileButton" Grid.Column="0" Content="Nuevo" Click="OnNewProfile" HorizontalAlignment="Stretch"/>
+              <Button x:Name="DeleteProfileButton" Grid.Column="2" Content="Eliminar" Click="OnDeleteProfile" Classes="danger" HorizontalAlignment="Stretch"/>
+            </Grid>
 
             <TextBlock Text="Nombre" Classes="field"/>
             <TextBox x:Name="ProfileNameBox"/>
@@ -70,6 +74,12 @@
                        Foreground="#8B9BB0" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
 
             <TextBlock Text="Túnel WireGuard" Classes="section" Margin="0,22,0,4"/>
+            <TextBlock Text="Archivo .conf" Classes="field"/>
+            <TextBox x:Name="ConfStatusBox" IsReadOnly="True" Watermark="Sin configurar"/>
+            <Grid ColumnDefinitions="*,8,*" Margin="0,6,0,0">
+              <Button x:Name="BrowseConfButton" Grid.Column="0" Content="Examinar…" Click="OnBrowseProfileConf" HorizontalAlignment="Stretch"/>
+              <Button x:Name="PasteConfButton" Grid.Column="2" Content="Pegar .conf…" Click="OnPasteProfileConf" HorizontalAlignment="Stretch"/>
+            </Grid>
             <TextBlock Text="Nombre del túnel" Classes="field"/>
             <TextBox x:Name="TunnelNameBox"/>
             <TextBlock Text="IP VPN del servidor (opcional)" Classes="field"/>
@@ -86,7 +96,8 @@
               </StackPanel>
             </Border>
 
-            <Button Content="Asistente de configuración" Click="OnWizard" Margin="0,16,0,8" HorizontalAlignment="Stretch"/>
+            <Button x:Name="WizardEditButton" Content="Asistente (este perfil)" Click="OnWizard" Margin="0,16,0,6" HorizontalAlignment="Stretch"/>
+            <Button x:Name="WizardNewButton" Content="Nuevo perfil con asistente" Click="OnWizardNew" Margin="0,0,0,8" HorizontalAlignment="Stretch"/>
           </StackPanel>
         </ScrollViewer>
       </Border>
